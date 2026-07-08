@@ -7,9 +7,10 @@ data "aws_ami" "my_ami" {
         name = "name"
         values = ["al2023-ami-*-x86_64"]
     }
+}
 
 resource "aws_instance" "my_first_demo"{
-    ami = data.aws_ami.amazon_linux.id
+    ami = data.aws_ami.my_ami.id
     instance_type = "t2.micro"
     user_data = file("${path.module}/userdata.sh")
     vpc_security_group_ids = [aws_security_group.web_sg.id]
@@ -29,18 +30,18 @@ resource "aws_security_group" "web_sg" {
         from_port = 80
         to_port = 80
         protocol = "tcp"
-        Cidr_blocks = ["0.0.0.0/0"]
+        cidr_blocks = ["0.0.0.0/0"]
     }
     
     egress {
         from_port = 0
         to_port = 0
         protocol = "-1"
-        Cidr_blocks = ["0.0.0.0/0"]
+        cidr_blocks = ["0.0.0.0/0"]
     }
 }
 
 
-}
+
    
     
