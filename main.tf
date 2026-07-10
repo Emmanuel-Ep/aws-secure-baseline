@@ -12,6 +12,7 @@ data "aws_ami" "my_ami" {
 resource "aws_instance" "my_first_demo"{
     ami = data.aws_ami.my_ami.id
     instance_type = "t2.micro"
+    subnet_id = aws_subnet.my_subnet.id
     user_data = file("${path.module}/userdata.sh")
     vpc_security_group_ids = [aws_security_group.web_sg.id]
 
@@ -24,6 +25,7 @@ resource "aws_instance" "my_first_demo"{
 resource "aws_security_group" "web_sg" {
     name = "web-sg"
     description = "Allow HTTP inbound, all outbound"
+    vpc_id = aws_vpc.main.id
 
     ingress {
         description = "HTTP from anywhere"
