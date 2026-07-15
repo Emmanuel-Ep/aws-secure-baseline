@@ -10,8 +10,17 @@ data "aws_ami" "my_ami" {
 }
 
 resource "aws_instance" "my_first_demo" {
-  ami                    = data.aws_ami.my_ami.id
-  instance_type          = var.instance_type
+  ami           = data.aws_ami.my_ami.id
+  instance_type = var.instance_type
+
+  root_block_device {
+    encrypted   = true
+    volume_type = "gp3"
+
+    tags = {
+      Name = "${var.project_name}-ebs-volume"
+    }
+  }
   subnet_id              = aws_subnet.my_subnet.id
   user_data              = file("${path.module}/userdata.sh")
   vpc_security_group_ids = [aws_security_group.web_sg.id]
@@ -122,4 +131,14 @@ resource "aws_iam_role_policy_attachment" "S3_read" {
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "${var.project_name}-ec2-profile"
   role = aws_iam_role.ec2_role.name
+}
+
+resource "aws_subnet" "private" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.2.0/24"
+  availability_zone = "us-east-1a"
+
+  tags = {
+    Name = "${var.project_name}-private-subnet"
+  }
 }
