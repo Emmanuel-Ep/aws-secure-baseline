@@ -21,3 +21,9 @@ variable "project_environment" {
   type        = string
   default     = "dev"
 }
+
+variable "allowed_ports" {
+  description = "list of allowed_ports"
+  type = list(number)
+  default = [80]
+}
