@@ -12,6 +12,8 @@ data "aws_ami" "my_ami" {
 resource "aws_instance" "my_first_demo" {
   ami           = data.aws_ami.my_ami.id
   instance_type = var.instance_type
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+  key_name = aws_key_pair.grace.key_name
 
   root_block_device {
     encrypted   = true
@@ -21,7 +23,7 @@ resource "aws_instance" "my_first_demo" {
       Name = "${var.project_name}-ebs-volume"
     }
   }
-  subnet_id              = aws_subnet.my_subnet.id
+  subnet_id              = module.network.public_subnet_id
   user_data              = file("${path.module}/userdata.sh")
   vpc_security_group_ids = [aws_security_group.web_sg.id]
 
@@ -30,18 +32,27 @@ resource "aws_instance" "my_first_demo" {
   }
 }
 
+resource "aws_key_pair" "grace" {
+  key_name = "grace"
+  public_key = file("${path.module}/grace.hub")
+}
+
 
 resource "aws_security_group" "web_sg" {
   name        = "web-sg"
-  description = "Allow HTTP inbound, all outbound"
-  vpc_id      = aws_vpc.main.id
+  description = "Allow HTTP and SSHinbound, all outbound"
+  vpc_id      = module.network.vpc_id
 
-  ingress {
-    description = "HTTP from anywhere"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+  dynamic "ingress" {
+    for_each = var.allowed_ports
+
+    content {
+      from_port = ingress.value
+      to_port = ingress.value
+      protocol = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+   
   }
 
   egress {
@@ -52,53 +63,20 @@ resource "aws_security_group" "web_sg" {
   }
 }
 
-resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_support   = true
-  enable_dns_hostnames = true
 
-  tags = {
-    Name = "vpc"
-  }
+
+module "network" {
+  source = "./modules/network"
+
+  project_name = var.project_name
+  vpc_cidr = "10.0.0.0/16"
+  public_subnet_cidr = "10.0.1.0/24"
+  private_subnet_cidr = "10.0.2.0/24"
+  availability_zone = "us-east-1a"
+
 }
 
-resource "aws_subnet" "my_subnet" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = "us-east-1a"
-  map_public_ip_on_launch = true
 
-  tags = {
-    Name = "subnet"
-  }
-}
-
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id
-
-  tags = {
-    Name = "igw"
-  }
-}
-
-resource "aws_route_table" "first_art" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
-
-  }
-
-  tags = {
-    Name = "route-table"
-  }
-}
-
-resource "aws_route_table_association" "public" {
-  subnet_id      = aws_subnet.my_subnet.id
-  route_table_id = aws_route_table.first_art.id
-}
 
 
 resource "aws_iam_role" "ec2_role" {
@@ -133,12 +111,7 @@ resource "aws_iam_instance_profile" "ec2_profile" {
   role = aws_iam_role.ec2_role.name
 }
 
-resource "aws_subnet" "private" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.2.0/24"
-  availability_zone = "us-east-1a"
-
-  tags = {
-    Name = "${var.project_name}-private-subnet"
-  }
+resource "aws_iam_role_policy_attachment" "ssm" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
