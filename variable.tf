@@ -1,19 +1,13 @@
 variable "aws_region" {
-  description = "Region for all resources"
+  description = "region to deploy resources in"
   type        = string
   default     = "us-east-1"
 }
 
-variable "instance_type" {
-  description = "EC2 instance type"
-  type        = string
-  default     = "t2.micro"
-}
-
 variable "project_name" {
-  description = "Name prefix for tagging"
+  description = "name prefix of the project"
   type        = string
-  default     = "secure-aws-baseline"
+  default     = "secure-aws-infrastructure"
 }
 
 variable "project_environment" {
@@ -22,8 +16,11 @@ variable "project_environment" {
   default     = "dev"
 }
 
-variable "allowed_ports" {
-  description = "list of allowed_ports"
-  type = list(number)
-  default = [80]
+variable "instance_count" {
+    description = "number of instances"
+    type = map(string)
+    default = {
+        web1 = "t2.micro"
+        web2 = "t3.micro"
+    }
 }
